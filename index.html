@@ -1895,51 +1895,37 @@ const app = {
 
     localSolve(question) {
 
-        const q =
-            question.toLowerCase().trim();
+ async solveQuestion() {
 
-        /* -------------------------------
-           2x + 5 = 17
-        -------------------------------- */
+    const input = document.getElementById("questionInput");
+    const question = input.value.trim();
 
-        let match =
-            q.match(
-                /^solve\s+(-?\d*\.?\d*)x\s*([+-])\s*(-?\d*\.?\d+)\s*=\s*(-?\d*\.?\d+)$/i
-            );
+    if (!question) {
+        this.toast("Please enter a problem first.", "error");
+        input.focus();
+        return;
+    }
+ 
 
-        if (match) {
+    this.showLoading();
 
-            let a =
-                match[1] === "" || match[1] === "+"
-                    ? 1
-                    : match[1] === "-"
-                        ? -1
-                        : Number(match[1]);
+    try {
+        const answer = await this.askAI(question);
 
-            const b =
-                Number(match[3]) *
-                (match[2] === "-" ? -1 : 1);
+        this.solutionText = answer;
 
-            const c =
-                Number(match[4]);
+        this.renderResult(
+            `<div class="p-4 text-sm leading-6">${this.escapeHTML(answer)}</div>`,
+            this.subject
+        );
 
-            const x =
-                (c - b) / a;
+        this.addHistory(question, answer);
 
-            return {
-                plainText: `x = ${x}`,
-                html: this.mathSolution(
-                    `Linear Equation`,
-                    [
-                        `Given: ${a}x ${b >= 0 ? "+" : "-"} ${Math.abs(b)} = ${c}`,
-                        `Subtract ${b}: ${a}x = ${c - b}`,
-                        `Divide by ${a}: x = ${x}`
-                    ],
-                    `\\boxed{x = ${x}}`
-                )
-            };
-
-        }
+    } catch (error) {
+        console.error(error);
+        this.toast("AI connection failed", "error");
+    }
+}
 
         /* -------------------------------
            Percentage

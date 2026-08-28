@@ -1849,50 +1849,49 @@ const app = {
     /* ========================================================
        SOLVER
     ======================================================== */
+   async askAI(question) {
+    const response = await fetch("/api/ask", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ question })
+    });
 
-    solveQuestion() {
+    const data = await response.json();
+    return data.answer;
+}
+  
+    solveQuestion() {async solveQuestion() {
 
-        const input =
-            document.getElementById("questionInput");
+    const input = document.getElementById("questionInput");
+    const question = input.value.trim();
 
-        const question =
-            input.value.trim();
+    if (!question) {
+        this.toast("Please enter a problem first.", "error");
+        input.focus();
+        return;
+    }
 
-        if (!question) {
+    this.showLoading();
 
-            this.toast(
-                "Please enter a problem first.",
-                "error"
-            );
+    try {
+        const answer = await this.askAI(question);
 
-            input.focus();
+        this.solutionText = answer;
 
-            return;
-        }
+        this.renderResult(
+            `<div class="p-4 text-sm leading-6">${this.escapeHTML(answer)}</div>`,
+            this.subject
+        );
 
-        this.showLoading();
+        this.addHistory(question, answer);
 
-        setTimeout(() => {
-
-            const solution =
-                this.localSolve(question);
-
-            this.solutionText =
-                solution.plainText;
-
-            this.renderResult(
-                solution.html,
-                this.subject
-            );
-
-            this.addHistory(
-                question,
-                solution.html
-            );
-
-        }, 500);
-
-    },
+    } catch (error) {
+        console.error(error);
+        this.toast("AI connection failed", "error");
+    }
+}
 
     localSolve(question) {
 

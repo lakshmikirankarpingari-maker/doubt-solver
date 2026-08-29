@@ -1872,25 +1872,51 @@ const app = {
 
         this.showLoading();
 
-        setTimeout(() => {
+ async solveQuestion() {
 
-            const solution =
-                this.localSolve(question);
+  const input = document.getElementById("questionInput");
+  const question = input.value.trim();
 
-            this.solutionText =
-                solution.plainText;
+  if (!question) {
+    this.toast("Please enter a problem first.", "error");
+    input.focus();
+    return;
+  }
 
-            this.renderResult(
-                solution.html,
-                this.subject
-            );
+  this.showLoading();
 
-            this.addHistory(
-                question,
-                solution.html
-            );
+  try {
 
-        }, 500);
+    const res = await fetch("/api/ask", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ question })
+    });
+
+    const data = await res.json();
+
+    const answer = data.answer || "No answer received";
+
+    this.solutionText = answer;
+
+    this.renderResult(
+      `<div class="text-sm leading-relaxed">${answer}</div>`,
+      this.subject
+    );
+
+    this.addHistory(question, answer);
+
+  } catch (error) {
+
+    this.renderResult(
+      `<p class="text-red-500">Error connecting to AI</p>`,
+      "Error"
+    );
+
+  }
+}
 
     },
 

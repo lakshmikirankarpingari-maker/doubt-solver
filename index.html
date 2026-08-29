@@ -1850,29 +1850,52 @@ const app = {
        SOLVER
     ======================================================== */
 
-    solveQuestion() {
+     solveQuestion: async function () {
 
-        const input =
-            document.getElementById("questionInput");
+  const input = document.getElementById("questionInput");
+  const question = input.value.trim();
 
-        const question =
-            input.value.trim();
+  if (!question) {
+    this.toast("Please enter a problem first.", "error");
+    input.focus();
+    return;
+  }
 
-        if (!question) {
+  this.showLoading();
 
-            this.toast(
-                "Please enter a problem first.",
-                "error"
-            );
+  try {
+    const res = await fetch("/api/ask", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ question })
+    });
 
-            input.focus();
+    const data = await res.json();
 
-            return;
-        }
+    const answer = data.answer || "No answer received";
 
-        this.showLoading();
+    this.solutionText = answer;
 
- async solveQuestion() {
+    this.renderResult(
+      `<div class="text-sm leading-relaxed whitespace-pre-wrap">${answer}</div>`,
+      this.subject
+    );
+
+    this.addHistory(question, answer);
+
+  } catch (error) {
+    console.error(error);
+
+    this.renderResult(
+      `<p class="text-red-500">Error connecting to AI</p>`,
+      "Error"
+    );
+  }
+}
+
+ solveQuestion: async function () {
 
   const input = document.getElementById("questionInput");
   const question = input.value.trim();

@@ -7,20 +7,14 @@
 
 <script src="https://cdn.tailwindcss.com"></script>
 
-<!-- Google AdSense (PUT YOUR ID LATER) -->
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXX"
-crossorigin="anonymous"></script>
-
 </head>
 
 <body class="bg-gray-100">
 
-<!-- HEADER -->
 <div class="bg-blue-600 text-white text-center p-4 text-xl font-bold">
 🤖 DoubtSolve AI
 </div>
 
-<!-- SUBJECTS -->
 <div class="flex gap-2 p-3 justify-center flex-wrap">
 <button onclick="app.setSubject('Math')" class="bg-white px-3 py-1 rounded shadow">Math</button>
 <button onclick="app.setSubject('Physics')" class="bg-white px-3 py-1 rounded shadow">Physics</button>
@@ -28,7 +22,6 @@ crossorigin="anonymous"></script>
 <button onclick="app.setSubject('Biology')" class="bg-white px-3 py-1 rounded shadow">Biology</button>
 </div>
 
-<!-- INPUT -->
 <div class="p-4">
 <textarea id="questionInput" class="w-full p-3 border rounded h-28"
 placeholder="Type your question..."></textarea>
@@ -42,27 +35,14 @@ Solve
 </button>
 </div>
 
-<!-- OUTPUT -->
-<div id="output" class="p-4"></div>
+<div id="output" class="p-4 text-lg"></div>
 
-<!-- AD SPACE -->
-<div class="p-4">
-<ins class="adsbygoogle"
-style="display:block"
-data-ad-client="ca-pub-XXXXXXXX"
-data-ad-slot="1234567890"
-data-ad-format="auto"></ins>
-<script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-</div>
-
-<!-- HISTORY -->
 <div class="p-4">
 <h2 class="font-bold mb-2">History</h2>
 <div id="history"></div>
 </div>
 
 <script>
-
 function startVoice() {
   const recognition = new webkitSpeechRecognition();
   recognition.lang = "en-IN";
@@ -83,18 +63,11 @@ const app = {
   },
 
   showLoading: function() {
-    document.getElementById("output").innerHTML = "Thinking...";
+    document.getElementById("output").innerHTML = "⏳ Thinking...";
   },
 
   renderResult: function(text) {
-    const el = document.getElementById("output");
-    el.innerHTML = "";
-    let i = 0;
-    const interval = setInterval(() => {
-      el.innerHTML += text[i];
-      i++;
-      if (i >= text.length) clearInterval(interval);
-    }, 10);
+    document.getElementById("output").innerText = text;
   },
 
   addHistory: function(q, a) {
@@ -113,8 +86,7 @@ const app = {
 
   solveQuestion: async function() {
 
-    const input = document.getElementById("questionInput");
-    const question = input.value.trim();
+    const question = document.getElementById("questionInput").value.trim();
 
     if (!question) {
       alert("Enter a question");
@@ -124,26 +96,30 @@ const app = {
     this.showLoading();
 
     try {
-      const res = await fetch("/api/ask", {
+      const res = await fetch("/api/ask-ai", {
         method: "POST",
-        headers: {"Content-Type":"application/json"},
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question: `[${this.subject}] ${question}`
         })
       });
 
       const data = await res.json();
-      const answer = data.answer || "No response";
 
+      if (!res.ok) {
+        throw new Error(data.error || "Server error");
+      }
+
+      const answer = data.answer;
       this.renderResult(answer);
       this.addHistory(question, answer);
 
-    } catch(e) {
-      this.renderResult("❌ Error connecting to AI");
+    } catch (e) {
+      console.error(e);
+      this.renderResult("❌ " + e.message);
     }
   }
 };
-
 </script>
 
 </body>

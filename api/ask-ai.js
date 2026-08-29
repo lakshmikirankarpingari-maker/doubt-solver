@@ -11,7 +11,10 @@
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: "You are a helpful STEM tutor." },
+          {
+            role: "system",
+            content: "You are an expert tutor. Explain step-by-step clearly."
+          },
           { role: "user", content: question }
         ],
       }),
@@ -24,6 +27,6 @@
     });
 
   } catch (error) {
-    res.status(500).json({ error: "Something went wrong" });
+    res.status(500).json({ error: "Error" });
   }
 }

@@ -1,72 +1,26 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DoubtSolve AI</title>
-
+<title>Login</title>
 <script src="https://cdn.tailwindcss.com"></script>
-
 </head>
 
-<body class="bg-gray-100">
+<body class="bg-gray-100 flex items-center justify-center h-screen">
 
-<div class="bg-blue-600 text-white text-center p-4 text-xl font-bold">
-🤖 DoubtSolve AI
-</div>
+<div class="bg-white p-6 rounded shadow w-80">
+<h2 class="text-xl font-bold text-center mb-4">Login</h2>
 
-<!-- LOGIN -->
-<div class="p-4 bg-white m-3 rounded shadow">
 <input id="email" placeholder="Email" class="border p-2 w-full mb-2"/>
 <input id="password" type="password" placeholder="Password" class="border p-2 w-full mb-2"/>
 
-<button onclick="signup()" class="bg-gray-500 text-white px-3 py-2 w-full mb-2">Sign Up</button>
-<button onclick="login()" class="bg-green-500 text-white px-3 py-2 w-full">Login</button>
+<button onclick="signup()" class="bg-gray-500 text-white w-full py-2 mb-2">Sign Up</button>
+<button onclick="login()" class="bg-blue-600 text-white w-full py-2">Login</button>
 
-<div id="userStatus" class="text-center mt-2 text-sm"></div>
 </div>
-
-<!-- SUBJECTS -->
-<div class="flex gap-2 p-3 justify-center flex-wrap">
-<button onclick="app.setSubject('Math')" class="bg-white px-3 py-1 rounded shadow">Math</button>
-<button onclick="app.setSubject('Physics')" class="bg-white px-3 py-1 rounded shadow">Physics</button>
-<button onclick="app.setSubject('Chemistry')" class="bg-white px-3 py-1 rounded shadow">Chemistry</button>
-<button onclick="app.setSubject('Biology')" class="bg-white px-3 py-1 rounded shadow">Biology</button>
-</div>
-
-<div class="p-4">
-<textarea id="questionInput" class="w-full p-3 border rounded h-28"
-placeholder="Type your question..."></textarea>
-
-<button onclick="startVoice()" class="mt-2 bg-green-500 text-white px-3 py-1 rounded">
-🎤 Speak
-</button>
-
-<button onclick="app.solveQuestion()" class="mt-3 w-full bg-blue-600 text-white py-2 rounded">
-Solve
-</button>
-
-<button onclick="buyPremium()" class="mt-3 w-full bg-yellow-500 text-white py-2 rounded">
-💎 Upgrade to Premium ₹49
-</button>
-</div>
-
-<div class="text-center text-sm text-gray-600">
-Free: 3/day | Premium: Unlimited 🚀
-</div>
-
-<div id="output" class="p-4 text-lg"></div>
-
-<div class="p-4">
-<h2 class="font-bold mb-2">History</h2>
-<div id="history"></div>
-</div>
-
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
 <script>
-
-// ================= LOGIN (BASIC) =================
 function signup() {
   const email = document.getElementById("email").value;
   const pass = document.getElementById("password").value;
@@ -83,180 +37,11 @@ function login() {
 
   if (user && user.email === email && user.pass === pass) {
     localStorage.setItem("loggedIn", "true");
-    alert("Login successful");
-    updateStatus();
+    window.location.href = "app.html"; // ✅ IMPORTANT
   } else {
     alert("Invalid login");
   }
 }
-
-// ================= STATUS =================
-function updateStatus() {
-  const isPremium = localStorage.getItem("premium") === "true";
-  const loggedIn = localStorage.getItem("loggedIn") === "true";
-
-  let text = loggedIn ? "👤 Logged In | " : "❌ Not Logged In | ";
-  text += isPremium ? "💎 Premium" : "🆓 Free (3/day)";
-
-  document.getElementById("userStatus").innerText = text;
-}
-updateStatus();
-
-// ================= CACHE =================
-function getCache() {
-  return JSON.parse(localStorage.getItem("ai_cache") || "{}");
-}
-
-function setCache(q, a) {
-  const cache = getCache();
-  cache[q] = a;
-
-  if (Object.keys(cache).length > 50) {
-    delete cache[Object.keys(cache)[0]];
-  }
-
-  localStorage.setItem("ai_cache", JSON.stringify(cache));
-}
-
-// ================= LIMIT =================
-let usage = JSON.parse(localStorage.getItem("usage") || "{}");
-
-function getToday() {
-  return new Date().toISOString().split("T")[0];
-}
-
-function canUse() {
-  if (localStorage.getItem("premium") === "true") return true;
-
-  const today = getToday();
-  if (!usage[today]) usage[today] = 0;
-
-  if (usage[today] >= 3) return false;
-
-  usage[today]++;
-  localStorage.setItem("usage", JSON.stringify(usage));
-  return true;
-}
-
-// ================= PAYMENT =================
-function buyPremium() {
-  const options = {
-    key: "YOUR_RAZORPAY_KEY",
-    amount: 4900,
-    currency: "INR",
-    name: "DoubtSolve AI",
-    description: "Premium Upgrade",
-
-    handler: function () {
-      localStorage.setItem("premium", "true");
-      alert("✅ Premium Activated");
-      updateStatus();
-    }
-  };
-
-  const rzp = new Razorpay(options);
-  rzp.open();
-}
-
-// ================= VOICE =================
-function startVoice() {
-  const recognition = new webkitSpeechRecognition();
-  recognition.lang = "en-IN";
-  recognition.onresult = e => {
-    document.getElementById("questionInput").value =
-      e.results[0][0].transcript;
-  };
-  recognition.start();
-}
-
-// ================= APP =================
-const app = {
-
-  subject: "General",
-
-  setSubject(sub) {
-    this.subject = sub;
-    alert("Subject: " + sub);
-  },
-
-  showLoading() {
-    document.getElementById("output").innerHTML = "⏳ Thinking...";
-  },
-
-  renderResult(text) {
-    document.getElementById("output").innerText = text;
-  },
-
-  addHistory(q, a) {
-    const old = JSON.parse(localStorage.getItem("history") || "[]");
-    const updated = [{q,a}, ...old];
-    localStorage.setItem("history", JSON.stringify(updated));
-
-    document.getElementById("history").innerHTML =
-      updated.map(item => `
-        <div class="bg-white p-2 rounded shadow mb-2">
-          <b>Q:</b> ${item.q}<br>
-          <b>A:</b> ${item.a}
-        </div>
-      `).join("");
-  },
-
-  async solveQuestion() {
-
-    const question = document.getElementById("questionInput").value.trim();
-
-    if (!question) {
-      alert("Enter a question");
-      return;
-    }
-
-    if (question.length > 200) {
-      alert("Keep question short");
-      return;
-    }
-
-    if (!canUse()) {
-      alert("❌ Limit reached. Upgrade to Premium 🚀");
-      return;
-    }
-
-    // CACHE CHECK
-    const cache = getCache();
-    if (cache[question]) {
-      this.renderResult("⚡ Cached:\n\n" + cache[question]);
-      return;
-    }
-
-    this.showLoading();
-
-    try {
-      const res = await fetch("/api/ask-ai", {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({
-          question: `[${this.subject}] ${question}`
-        })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error);
-
-      const answer = data.answer;
-
-      this.renderResult(answer);
-      this.addHistory(question, answer);
-
-      // SAVE CACHE
-      setCache(question, answer);
-
-    } catch (e) {
-      console.error(e);
-      this.renderResult("❌ " + e.message);
-    }
-  }
-};
-
 </script>
 
 </body>

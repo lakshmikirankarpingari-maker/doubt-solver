@@ -43,7 +43,7 @@ function logout() {
   window.location.href = "index.html";
 }
 
-// CACHE
+// ================= CACHE =================
 function getCache() {
   return JSON.parse(localStorage.getItem("ai_cache") || "{}");
 }
@@ -51,10 +51,15 @@ function getCache() {
 function setCache(q, a) {
   const cache = getCache();
   cache[q] = a;
+
+  // limit cache size
+  const keys = Object.keys(cache);
+  if (keys.length > 50) delete cache[keys[0]];
+
   localStorage.setItem("ai_cache", JSON.stringify(cache));
 }
 
-// LIMIT
+// ================= LIMIT =================
 let usage = JSON.parse(localStorage.getItem("usage") || "{}");
 
 function getToday() {
@@ -72,10 +77,11 @@ function canUse() {
   return true;
 }
 
-// APP
+// ================= APP =================
 const app = {
+
   showLoading() {
-    document.getElementById("output").innerHTML = "⏳ Thinking...";
+    document.getElementById("output").innerText = "⏳ Thinking...";
   },
 
   renderResult(text) {
@@ -86,13 +92,17 @@ const app = {
 
     const question = document.getElementById("questionInput").value.trim();
 
-    if (!question) return alert("Enter a question");
-
-    if (!canUse()) {
-      alert("Limit reached");
+    if (!question) {
+      alert("Enter a question");
       return;
     }
 
+    if (!canUse()) {
+      alert("❌ Daily limit reached");
+      return;
+    }
+
+    // ✅ CACHE CHECK
     const cache = getCache();
     if (cache[question]) {
       this.renderResult("⚡ Cached:\n\n" + cache[question]);
@@ -109,13 +119,28 @@ const app = {
       });
 
       const data = await res.json();
+
+      console.log("API RESPONSE:", data); // 🔍 DEBUG
+
+      // ✅ HANDLE ERRORS PROPERLY
+      if (!res.ok) {
+        this.renderResult("❌ " + (data.error || "Server error"));
+        return;
+      }
+
+      if (!data.answer) {
+        this.renderResult("❌ No answer received");
+        return;
+      }
+
       const answer = data.answer;
 
       this.renderResult(answer);
       setCache(question, answer);
 
-    } catch {
-      this.renderResult("❌ Error");
+    } catch (e) {
+      console.error(e);
+      this.renderResult("❌ Connection error");
     }
   }
 };

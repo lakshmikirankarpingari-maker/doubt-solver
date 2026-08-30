@@ -16,7 +16,7 @@ if (localStorage.getItem("loggedIn") !== "true") {
 </script>
 
 <!-- HEADER -->
-<div class="bg-blue-600 text-white text-center p-4 text-2xl font-bold shadow-lg">
+<div class="bg-blue-600 text-white text-center p-4 text-2xl font-bold shadow">
 🤖 DoubtSolve AI
 </div>
 
@@ -28,29 +28,22 @@ if (localStorage.getItem("loggedIn") !== "true") {
 <button onclick="logout()" class="text-red-500 hover:underline">Logout</button>
 </div>
 
-<!-- INPUT CARD -->
+<!-- INPUT -->
 <div class="max-w-xl mx-auto mt-4 bg-white p-4 rounded-xl shadow">
 <textarea id="questionInput" class="w-full p-3 border rounded h-28"
-placeholder="Ask any question..."></textarea>
+placeholder="Ask your question..."></textarea>
 
 <button onclick="app.solveQuestion()"
-class="mt-3 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">
+class="mt-3 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
 Solve
 </button>
 </div>
 
-<!-- CATEGORY TABS -->
-<div class="max-w-xl mx-auto mt-4 flex gap-2 overflow-auto px-2">
-<button onclick="filterDemo('all')" class="tab">All</button>
-<button onclick="filterDemo('math')" class="tab">Math</button>
-<button onclick="filterDemo('physics')" class="tab">Physics</button>
-<button onclick="filterDemo('chem')" class="tab">Chemistry</button>
-<button onclick="filterDemo('bio')" class="tab">Biology</button>
-<button onclick="filterDemo('cs')" class="tab">Computer</button>
+<!-- 🔒 DEMO (ADMIN ONLY) -->
+<div id="demoSection" class="max-w-xl mx-auto mt-4 hidden">
+<h2 class="font-bold mb-2">📘 Demo Questions (Admin Only)</h2>
+<div id="demoList" class="grid gap-2"></div>
 </div>
-
-<!-- DEMO CARDS -->
-<div class="max-w-xl mx-auto mt-3 grid gap-2 p-2" id="demoList"></div>
 
 <!-- OUTPUT -->
 <div id="output" class="max-w-xl mx-auto mt-4 bg-white p-4 rounded-xl shadow text-lg"></div>
@@ -62,15 +55,6 @@ Solve
 </div>
 
 <style>
-.tab{
-  background:white;
-  padding:6px 12px;
-  border-radius:20px;
-  box-shadow:0 2px 4px rgba(0,0,0,0.1);
-  cursor:pointer;
-  white-space:nowrap;
-}
-.tab:hover{background:#e0f2fe;}
 .card{
   background:white;
   padding:10px;
@@ -92,54 +76,55 @@ const ADMIN_EMAIL = "lakshmikirankarpingari@gmail.com";
 
 // ================= DEMO DATA =================
 const EXAMPLES = {
-m1:{cat:"math",q:"What is 2 + 2?",a:"2 + 2 = 4"},
-m2:{cat:"math",q:"What is 5 × 6?",a:"30"},
-m3:{cat:"math",q:"Square of 7?",a:"49"},
-m4:{cat:"math",q:"√64?",a:"8"},
-m5:{cat:"math",q:"Solve: 3x = 12",a:"x = 4"},
+m1:{q:"What is 2 + 2?",a:"2 + 2 = 4"},
+m2:{q:"What is 5 × 6?",a:"30"},
+m3:{q:"Square of 7?",a:"49"},
+m4:{q:"√64?",a:"8"},
+m5:{q:"Solve: 3x = 12",a:"x = 4"},
 
-p1:{cat:"physics",q:"Newton’s First Law?",a:"Object stays at rest or motion unless force acts."},
-p2:{cat:"physics",q:"Formula of force?",a:"F = ma"},
-p3:{cat:"physics",q:"Unit of power?",a:"Watt"},
-p4:{cat:"physics",q:"Speed formula?",a:"Distance / Time"},
+p1:{q:"Newton’s First Law?",a:"Object remains in motion unless force acts."},
+p2:{q:"Formula of force?",a:"F = ma"},
+p3:{q:"Unit of power?",a:"Watt"},
+p4:{q:"Speed formula?",a:"Distance / Time"},
 
-c1:{cat:"chem",q:"Formula of water?",a:"H₂O"},
-c2:{cat:"chem",q:"CO2 formula?",a:"CO₂"},
-c3:{cat:"chem",q:"What is acid?",a:"Releases H+"},
+c1:{q:"Formula of water?",a:"H₂O"},
+c2:{q:"CO2 formula?",a:"CO₂"},
+c3:{q:"What is acid?",a:"Releases H+"},
 
-b1:{cat:"bio",q:"Photosynthesis?",a:"Plants make food using sunlight"},
-b2:{cat:"bio",q:"Cell?",a:"Basic unit of life"},
-b3:{cat:"bio",q:"DNA?",a:"Genetic material"},
+b1:{q:"Photosynthesis?",a:"Plants make food using sunlight"},
+b2:{q:"Cell?",a:"Basic unit of life"},
+b3:{q:"DNA?",a:"Genetic material"},
 
-cs1:{cat:"cs",q:"What is AI?",a:"Machines mimicking intelligence"},
-cs2:{cat:"cs",q:"Algorithm?",a:"Step-by-step solution"},
-cs3:{cat:"cs",q:"Programming?",a:"Writing instructions"}
+cs1:{q:"What is AI?",a:"Machines mimicking intelligence"},
+cs2:{q:"Algorithm?",a:"Step-by-step solution"},
+cs3:{q:"Programming?",a:"Writing instructions"}
 };
 
 // ================= DEMO UI =================
-function renderDemo(filter="all"){
-  const list=document.getElementById("demoList");
+function renderDemo(){
+  const list = document.getElementById("demoList");
 
-  list.innerHTML = Object.keys(EXAMPLES)
-    .filter(k => filter==="all" || EXAMPLES[k].cat===filter)
-    .map(k => `
-      <div class="card" onclick="loadExample('${k}')">
-        ${EXAMPLES[k].q}
-      </div>
-    `).join("");
-}
-
-function filterDemo(cat){
-  renderDemo(cat);
+  list.innerHTML = Object.keys(EXAMPLES).map(k => `
+    <div class="card" onclick="loadExample('${k}')">
+      ${EXAMPLES[k].q}
+    </div>
+  `).join("");
 }
 
 function loadExample(key){
-  const ex=EXAMPLES[key];
-  questionInput.value=ex.q;
-  output.innerText="📘 Demo Answer:\n\n"+ex.a;
+  const ex = EXAMPLES[key];
+  questionInput.value = ex.q;
+  output.innerText = "📘 Demo Answer:\n\n" + ex.a;
 }
 
-// ================= CORE SYSTEM =================
+// 🔒 SHOW DEMO ONLY FOR ADMIN
+function controlDemoAccess(){
+  if(getUser() === ADMIN_EMAIL){
+    document.getElementById("demoSection").classList.remove("hidden");
+  }
+}
+
+// ================= CORE =================
 function logout(){
   localStorage.clear();
   window.location.href="index.html";
@@ -149,6 +134,7 @@ function getUser(){
   return localStorage.getItem("currentUser");
 }
 
+// CACHE
 function getCache(){
   return JSON.parse(localStorage.getItem("cache_"+getUser())||"{}");
 }
@@ -157,6 +143,7 @@ function setCache(q,a){
   localStorage.setItem("cache_"+getUser(),JSON.stringify(c));
 }
 
+// HISTORY
 function getHistory(){
   return JSON.parse(localStorage.getItem("history_"+getUser())||"[]");
 }
@@ -189,6 +176,7 @@ function canUse(){
   return true;
 }
 
+// STATUS
 function updateStatus(){
   if(getUser()===ADMIN_EMAIL){
     status.innerText="👑 Admin Unlimited";
@@ -197,19 +185,22 @@ function updateStatus(){
   }
 }
 
-// APP
+// ================= APP =================
 const app={
 async solveQuestion(){
+
   const q=questionInput.value.trim();
   if(!q) return alert("Enter question");
 
   if(!canUse()) return alert("Limit reached");
 
-  // DEMO MATCH
-  const demo = Object.values(EXAMPLES).find(e=>e.q.toLowerCase()===q.toLowerCase());
-  if(demo){
-    output.innerText="📘 Demo Answer:\n\n"+demo.a;
-    return;
+  // 🔒 DEMO ONLY FOR ADMIN
+  if(getUser() === ADMIN_EMAIL){
+    const demo = Object.values(EXAMPLES).find(e=>e.q.toLowerCase()===q.toLowerCase());
+    if(demo){
+      output.innerText="📘 Demo Answer:\n\n"+demo.a;
+      return;
+    }
   }
 
   const cache=getCache();
@@ -244,6 +235,7 @@ async solveQuestion(){
 };
 
 // INIT
+controlDemoAccess();
 renderDemo();
 renderHistory();
 updateStatus();

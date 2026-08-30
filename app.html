@@ -35,27 +35,76 @@ Solve
 
 <div id="output" class="p-4 text-lg"></div>
 
+<!-- HISTORY -->
+<div class="p-4">
+<h2 class="font-bold mb-2">History</h2>
+<div id="history"></div>
+</div>
+
 <script>
 
 // LOGOUT
 function logout() {
   localStorage.removeItem("loggedIn");
+  localStorage.removeItem("currentUser");
   window.location.href = "index.html";
 }
 
-// ================= CACHE =================
+// ================= USER =================
+function getCurrentUser() {
+  return localStorage.getItem("currentUser");
+}
+
+// ================= CACHE (USER BASED) =================
+function getCacheKey() {
+  return "cache_" + getCurrentUser();
+}
+
 function getCache() {
-  return JSON.parse(localStorage.getItem("ai_cache") || "{}");
+  return JSON.parse(localStorage.getItem(getCacheKey()) || "{}");
 }
 
 function setCache(q, a) {
   const cache = getCache();
   cache[q] = a;
 
-  const keys = Object.keys(cache);
-  if (keys.length > 50) delete cache[keys[0]];
+  if (Object.keys(cache).length > 50) {
+    delete cache[Object.keys(cache)[0]];
+  }
 
-  localStorage.setItem("ai_cache", JSON.stringify(cache));
+  localStorage.setItem(getCacheKey(), JSON.stringify(cache));
+}
+
+// ================= HISTORY (USER BASED) =================
+function getHistoryKey() {
+  return "history_" + getCurrentUser();
+}
+
+function getHistory() {
+  return JSON.parse(localStorage.getItem(getHistoryKey()) || "[]");
+}
+
+function saveHistory(history) {
+  localStorage.setItem(getHistoryKey(), JSON.stringify(history));
+}
+
+function renderHistory() {
+  const history = getHistory();
+
+  document.getElementById("history").innerHTML =
+    history.map(item => `
+      <div class="bg-white p-2 rounded shadow mb-2">
+        <b>Q:</b> ${item.q}<br>
+        <b>A:</b> ${item.a}
+      </div>
+    `).join("");
+}
+
+function addHistory(q, a) {
+  const history = getHistory();
+  history.unshift({ q, a });
+  saveHistory(history);
+  renderHistory();
 }
 
 // ================= LIMIT =================
@@ -74,9 +123,8 @@ function canUse() {
   usage[today]++;
   localStorage.setItem("usage", JSON.stringify(usage));
 
-  // ⚠️ warning
   if (usage[today] === 2) {
-    alert("⚠️ Only 1 free question left today!");
+    alert("⚠️ Only 1 question left today!");
   }
 
   return true;
@@ -109,20 +157,9 @@ const app = {
 
     if (!question) return alert("Enter a question");
 
-    if (question.length > 200) {
-      alert("Keep question short");
-      return;
-    }
+    if (!allowRequest()) return alert("Wait a few seconds");
 
-    if (!allowRequest()) {
-      alert("Wait a few seconds...");
-      return;
-    }
-
-    if (!canUse()) {
-      alert("❌ Daily limit reached");
-      return;
-    }
+    if (!canUse()) return alert("❌ Daily limit reached");
 
     // CACHE
     const cache = getCache();
@@ -149,19 +186,24 @@ const app = {
       }
 
       if (!data.answer) {
-        this.renderResult("❌ No answer");
+        this.renderResult("❌ No answer received");
         return;
       }
 
       this.renderResult(data.answer);
+
       setCache(question, data.answer);
+      addHistory(question, data.answer);
 
     } catch (e) {
       console.error(e);
-      this.renderResult("❌ Connection failed");
+      this.renderResult("❌ Connection error");
     }
   }
 };
+
+// LOAD HISTORY
+renderHistory();
 
 </script>
 

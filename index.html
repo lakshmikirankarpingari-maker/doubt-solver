@@ -17,19 +17,25 @@
 
 <button onclick="signup()" class="bg-gray-500 text-white w-full py-2 mb-2">Sign Up</button>
 <button onclick="login()" class="bg-blue-600 text-white w-full py-2">Login</button>
+
 </div>
 
 <script>
 
+// GET USERS
 function getUsers(){
   return JSON.parse(localStorage.getItem("users") || "{}");
 }
 
+// SIGNUP
 function signup(){
-  const email = document.getElementById("email").value.trim();
-  const pass = document.getElementById("password").value.trim();
+  let email = document.getElementById("email").value.trim().toLowerCase();
+  let pass = document.getElementById("password").value.trim();
 
-  if(!email || !pass) return alert("Enter details");
+  if(!email || !pass){
+    alert("Enter email & password");
+    return;
+  }
 
   let users = getUsers();
 
@@ -38,24 +44,29 @@ function signup(){
     return;
   }
 
-  users[email] = {password: pass};
+  users[email] = { password: pass };
   localStorage.setItem("users", JSON.stringify(users));
 
-  alert("Signup successful");
+  alert("Signup successful ✅");
 }
 
+// LOGIN
 function login(){
-  const email = document.getElementById("email").value.trim();
-  const pass = document.getElementById("password").value.trim();
+  let email = document.getElementById("email").value.trim().toLowerCase();
+  let pass = document.getElementById("password").value.trim();
 
   let users = getUsers();
 
+  // DEBUG (optional)
+  console.log("Stored users:", users);
+
   if(users[email] && users[email].password === pass){
     localStorage.setItem("loggedIn", "true");
-    localStorage.setItem("currentUser", email); // ✅ IMPORTANT
+    localStorage.setItem("currentUser", email);
+
     window.location.href = "app.html";
   } else {
-    alert("Invalid email or password ❌");
+    alert("❌ Invalid email or password");
   }
 }
 

@@ -10,6 +10,7 @@
 <body class="bg-gray-100">
 
 <script>
+// 🔒 AUTH CHECK
 if (localStorage.getItem("loggedIn") !== "true") {
   window.location.href = "index.html";
 }
@@ -26,7 +27,9 @@ if (localStorage.getItem("loggedIn") !== "true") {
 </div>
 
 <div class="p-4">
-<textarea id="questionInput" class="w-full p-3 border rounded h-28"></textarea>
+<textarea id="questionInput" class="w-full p-3 border rounded h-28"
+placeholder="Type your question..."></textarea>
+
 <button onclick="app.solveQuestion()" class="mt-3 w-full bg-blue-600 text-white py-2 rounded">
 Solve
 </button>
@@ -41,12 +44,13 @@ Solve
 
 <script>
 
-// 👑 ADMIN
+// 👑 ADMIN EMAIL (YOUR EMAIL)
 const ADMIN_EMAIL = "lakshmikirankarpingari@gmail.com";
 
 // LOGOUT
 function logout() {
-  localStorage.clear();
+  localStorage.removeItem("loggedIn");
+  localStorage.removeItem("currentUser");
   window.location.href = "index.html";
 }
 
@@ -55,115 +59,159 @@ function getUser() {
   return localStorage.getItem("currentUser");
 }
 
-// CACHE
+// ================= CACHE =================
 function getCache() {
   return JSON.parse(localStorage.getItem("cache_" + getUser()) || "{}");
 }
-function setCache(q,a){
-  const c=getCache(); c[q]=a;
-  localStorage.setItem("cache_"+getUser(),JSON.stringify(c));
+
+function setCache(q, a) {
+  const cache = getCache();
+  cache[q] = a;
+  localStorage.setItem("cache_" + getUser(), JSON.stringify(cache));
 }
 
-// HISTORY
-function getHistory(){
-  return JSON.parse(localStorage.getItem("history_"+getUser())||"[]");
+// ================= HISTORY =================
+function getHistory() {
+  return JSON.parse(localStorage.getItem("history_" + getUser()) || "[]");
 }
-function addHistory(q,a){
-  const h=getHistory(); h.unshift({q,a});
-  localStorage.setItem("history_"+getUser(),JSON.stringify(h));
+
+function addHistory(q, a) {
+  const history = getHistory();
+  history.unshift({ q, a });
+  localStorage.setItem("history_" + getUser(), JSON.stringify(history));
   renderHistory();
 }
-function renderHistory(){
-  const h=getHistory();
+
+function renderHistory() {
+  const history = getHistory();
   document.getElementById("history").innerHTML =
-    h.map(i=>`<div class="bg-white p-2 mb-2">${i.q}<br>${i.a}</div>`).join("");
+    history.map(item => `
+      <div class="bg-white p-2 mb-2 rounded shadow">
+        <b>Q:</b> ${item.q}<br>
+        <b>A:</b> ${item.a}
+      </div>
+    `).join("");
 }
 
-// TRIAL
-function getTrial(){
-  return parseInt(localStorage.getItem("trial_"+getUser())||"0");
-}
-function incTrial(){
-  localStorage.setItem("trial_"+getUser(), getTrial()+1);
+// ================= TRIAL =================
+function getTrial() {
+  return parseInt(localStorage.getItem("trial_" + getUser()) || "0");
 }
 
-// LIMIT
-let usage = JSON.parse(localStorage.getItem("usage")||"{}");
-function today(){ return new Date().toISOString().split("T")[0]; }
+function incTrial() {
+  localStorage.setItem("trial_" + getUser(), getTrial() + 1);
+}
 
-// ACCESS
-function canUse(){
-  const user=getUser();
+// ================= DAILY LIMIT =================
+let usage = JSON.parse(localStorage.getItem("usage") || {});
 
-  if(user===ADMIN_EMAIL) return true;
+function today() {
+  return new Date().toISOString().split("T")[0];
+}
 
-  if(getTrial()<5){ incTrial(); return true; }
+// ================= ACCESS CONTROL =================
+function canUse() {
 
-  if(!usage[today()]) usage[today()]=0;
+  const user = getUser();
 
-  if(usage[today()]>=3) return false;
+  // 👑 ADMIN = UNLIMITED
+  if (user === ADMIN_EMAIL) return true;
+
+  // 🎁 TRIAL (5 uses)
+  if (getTrial() < 5) {
+    incTrial();
+    return true;
+  }
+
+  // 📅 DAILY LIMIT (3/day)
+  if (!usage[today()]) usage[today()] = 0;
+
+  if (usage[today()] >= 3) return false;
 
   usage[today()]++;
-  localStorage.setItem("usage",JSON.stringify(usage));
+  localStorage.setItem("usage", JSON.stringify(usage));
+
   return true;
 }
 
-// STATUS
-function updateStatus(){
-  const user=getUser();
-  let text="";
+// ================= STATUS =================
+function updateStatus() {
+  const user = getUser();
+  let text = "";
 
-  if(user===ADMIN_EMAIL) text="👑 Admin Unlimited";
-  else if(getTrial()<5) text="🎁 Trial left: "+(5-getTrial());
-  else text="🆓 Daily left: "+(3-(usage[today()]||0));
+  if (user === ADMIN_EMAIL) {
+    text = "👑 Admin (Unlimited)";
+  } else if (getTrial() < 5) {
+    text = "🎁 Trial left: " + (5 - getTrial());
+  } else {
+    text = "🆓 Daily left: " + (3 - (usage[today()] || 0));
+  }
 
-  document.getElementById("status").innerText=text;
+  document.getElementById("status").innerText = text;
 }
 
-// FALLBACK
-function fallback(q){
-  if(q.includes("2+2")) return "4";
-  return "⚠️ Server busy. Try later.";
+// ================= FALLBACK =================
+function fallback(q) {
+  if (q.includes("2+2")) return "Answer: 4";
+  if (q.includes("capital of india")) return "New Delhi";
+  return "⚠️ Server busy. Try again later.";
 }
 
-// APP
-const app={
-async solveQuestion(){
+// ================= APP =================
+const app = {
 
-  const q=document.getElementById("questionInput").value.trim();
-  if(!q) return alert("Enter question");
+  showLoading() {
+    document.getElementById("output").innerText = "⏳ Thinking...";
+  },
 
-  if(!canUse()) return alert("Limit reached");
+  renderResult(text) {
+    document.getElementById("output").innerText = text;
+  },
 
-  const cache=getCache();
-  if(cache[q]) return document.getElementById("output").innerText=cache[q];
+  async solveQuestion() {
 
-  document.getElementById("output").innerText="⏳ Thinking...";
+    const q = document.getElementById("questionInput").value.trim();
 
-  try{
-    const res=await fetch("/api/ask-ai",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({question:q})
-    });
+    if (!q) return alert("Enter question");
 
-    const data=await res.json();
-
-    if(!res.ok || !data.answer){
-      document.getElementById("output").innerText=fallback(q);
+    if (!canUse()) {
+      alert("Limit reached");
       return;
     }
 
-    document.getElementById("output").innerText=data.answer;
-    setCache(q,data.answer);
-    addHistory(q,data.answer);
+    // CACHE
+    const cache = getCache();
+    if (cache[q]) {
+      this.renderResult("⚡ Cached:\n\n" + cache[q]);
+      return;
+    }
 
-  }catch{
-    document.getElementById("output").innerText=fallback(q);
+    this.showLoading();
+
+    try {
+      const res = await fetch("/api/ask-ai", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ question: q })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.answer) {
+        this.renderResult(fallback(q));
+        return;
+      }
+
+      this.renderResult(data.answer);
+      setCache(q, data.answer);
+      addHistory(q, data.answer);
+
+    } catch {
+      this.renderResult(fallback(q));
+    }
+
+    updateStatus();
   }
-
-  updateStatus();
-}
 };
 
 // INIT

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DoubtSolve AI</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100">
+
+<script>
+// 🔒 BLOCK DIRECT ACCESS
+if (localStorage.getItem("loggedIn") !== "true") {
+  window.location.href = "index.html";
+}
+</script>
+
+<div class="bg-blue-600 text-white text-center p-4 text-xl font-bold">
+🤖 DoubtSolve AI
+</div>
+
+<div class="text-center mt-2">
+<button onclick="logout()" class="text-red-500">Logout</button>
+</div>
+
+<div class="p-4">
+<textarea id="questionInput" class="w-full p-3 border rounded h-28"
+placeholder="Type your question..."></textarea>
+
+<button onclick="app.solveQuestion()" class="mt-3 w-full bg-blue-600 text-white py-2 rounded">
+Solve
+</button>
+</div>
+
+<div id="output" class="p-4 text-lg"></div>
+
+<script>
+
+// LOGOUT
+function logout() {
+  localStorage.removeItem("loggedIn");
+  window.location.href = "index.html";
+}
+
+// CACHE
+function getCache() {
+  return JSON.parse(localStorage.getItem("ai_cache") || "{}");
+}
+
+function setCache(q, a) {
+  const cache = getCache();
+  cache[q] = a;
+  localStorage.setItem("ai_cache", JSON.stringify(cache));
+}
+
+// LIMIT
+let usage = JSON.parse(localStorage.getItem("usage") || "{}");
+
+function getToday() {
+  return new Date().toISOString().split("T")[0];
+}
+
+function canUse() {
+  const today = getToday();
+  if (!usage[today]) usage[today] = 0;
+
+  if (usage[today] >= 3) return false;
+
+  usage[today]++;
+  localStorage.setItem("usage", JSON.stringify(usage));
+  return true;
+}
+
+// APP
+const app = {
+  showLoading() {
+    document.getElementById("output").innerHTML = "⏳ Thinking...";
+  },
+
+  renderResult(text) {
+    document.getElementById("output").innerText = text;
+  },
+
+  async solveQuestion() {
+
+    const question = document.getElementById("questionInput").value.trim();
+
+    if (!question) return alert("Enter a question");
+
+    if (!canUse()) {
+      alert("Limit reached");
+      return;
+    }
+
+    const cache = getCache();
+    if (cache[question]) {
+      this.renderResult("⚡ Cached:\n\n" + cache[question]);
+      return;
+    }
+
+    this.showLoading();
+
+    try {
+      const res = await fetch("/api/ask-ai", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ question })
+      });
+
+      const data = await res.json();
+      const answer = data.answer;
+
+      this.renderResult(answer);
+      setCache(question, answer);
+
+    } catch {
+      this.renderResult("❌ Error");
+    }
+  }
+};
+
+</script>
+
+</body>
+</html>

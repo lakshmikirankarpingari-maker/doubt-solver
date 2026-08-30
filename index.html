@@ -10,7 +10,7 @@
 <body class="bg-gray-100 flex items-center justify-center h-screen">
 
 <div class="bg-white p-6 rounded shadow w-80">
-<h2 class="text-xl font-bold text-center mb-4">Login</h2>
+<h2 class="text-xl font-bold text-center mb-4">🔐 Login</h2>
 
 <input id="email" placeholder="Email" class="border p-2 w-full mb-2"/>
 <input id="password" type="password" placeholder="Password" class="border p-2 w-full mb-2"/>
@@ -18,30 +18,73 @@
 <button onclick="signup()" class="bg-gray-500 text-white w-full py-2 mb-2">Sign Up</button>
 <button onclick="login()" class="bg-blue-600 text-white w-full py-2">Login</button>
 
+<p id="msg" class="text-center text-red-500 mt-2"></p>
 </div>
 
 <script>
-function signup() {
-  const email = document.getElementById("email").value;
-  const pass = document.getElementById("password").value;
 
-  localStorage.setItem("user", JSON.stringify({email, pass}));
-  alert("Signup successful");
+// AUTO LOGIN CHECK
+if (localStorage.getItem("loggedIn") === "true") {
+  window.location.href = "app.html";
 }
 
+// GET USERS
+function getUsers() {
+  return JSON.parse(localStorage.getItem("users") || "[]");
+}
+
+// SAVE USERS
+function saveUsers(users) {
+  localStorage.setItem("users", JSON.stringify(users));
+}
+
+// SIGNUP
+function signup() {
+  const email = document.getElementById("email").value.trim();
+  const pass = document.getElementById("password").value.trim();
+
+  if (!email || !pass) {
+    return showMsg("Enter email & password");
+  }
+
+  let users = getUsers();
+
+  const exists = users.find(u => u.email === email);
+  if (exists) {
+    return showMsg("User already exists");
+  }
+
+  users.push({ email, pass });
+  saveUsers(users);
+
+  showMsg("Signup successful ✅", "green");
+}
+
+// LOGIN
 function login() {
-  const email = document.getElementById("email").value;
-  const pass = document.getElementById("password").value;
+  const email = document.getElementById("email").value.trim();
+  const pass = document.getElementById("password").value.trim();
 
-  const user = JSON.parse(localStorage.getItem("user"));
+  let users = getUsers();
 
-  if (user && user.email === email && user.pass === pass) {
+  const user = users.find(u => u.email === email && u.pass === pass);
+
+  if (user) {
     localStorage.setItem("loggedIn", "true");
-    window.location.href = "app.html"; // ✅ IMPORTANT
+    localStorage.setItem("currentUser", email);
+    window.location.href = "app.html";
   } else {
-    alert("Invalid login");
+    showMsg("Invalid login ❌");
   }
 }
+
+// MESSAGE
+function showMsg(text, color="red") {
+  const el = document.getElementById("msg");
+  el.innerText = text;
+  el.style.color = color;
+}
+
 </script>
 
 </body>

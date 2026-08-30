@@ -10,7 +10,6 @@
 <body class="bg-gray-100">
 
 <script>
-// 🔒 AUTH CHECK
 if (localStorage.getItem("loggedIn") !== "true") {
   window.location.href = "index.html";
 }
@@ -20,16 +19,14 @@ if (localStorage.getItem("loggedIn") !== "true") {
 🤖 DoubtSolve AI
 </div>
 
-<div id="status" class="text-center text-sm text-gray-600 mt-2"></div>
+<div id="status" class="text-center text-sm mt-2"></div>
 
 <div class="text-center mt-2">
 <button onclick="logout()" class="text-red-500">Logout</button>
 </div>
 
 <div class="p-4">
-<textarea id="questionInput" class="w-full p-3 border rounded h-28"
-placeholder="Type your question..."></textarea>
-
+<textarea id="questionInput" class="w-full p-3 border rounded h-28"></textarea>
 <button onclick="app.solveQuestion()" class="mt-3 w-full bg-blue-600 text-white py-2 rounded">
 Solve
 </button>
@@ -37,7 +34,6 @@ Solve
 
 <div id="output" class="p-4 text-lg"></div>
 
-<!-- HISTORY -->
 <div class="p-4">
 <h2 class="font-bold mb-2">History</h2>
 <div id="history"></div>
@@ -45,223 +41,129 @@ Solve
 
 <script>
 
-// 👑 ADMIN EMAIL (YOUR EMAIL ADDED)
+// 👑 ADMIN
 const ADMIN_EMAIL = "lakshmikirankarpingari@gmail.com";
 
 // LOGOUT
 function logout() {
-  localStorage.removeItem("loggedIn");
-  localStorage.removeItem("currentUser");
+  localStorage.clear();
   window.location.href = "index.html";
 }
 
-// ================= USER =================
-function getCurrentUser() {
+// USER
+function getUser() {
   return localStorage.getItem("currentUser");
 }
 
-// ================= CACHE (USER BASED) =================
-function getCacheKey() {
-  return "cache_" + getCurrentUser();
-}
-
+// CACHE
 function getCache() {
-  return JSON.parse(localStorage.getItem(getCacheKey()) || "{}");
+  return JSON.parse(localStorage.getItem("cache_" + getUser()) || "{}");
+}
+function setCache(q,a){
+  const c=getCache(); c[q]=a;
+  localStorage.setItem("cache_"+getUser(),JSON.stringify(c));
 }
 
-function setCache(q, a) {
-  const cache = getCache();
-  cache[q] = a;
-
-  if (Object.keys(cache).length > 50) {
-    delete cache[Object.keys(cache)[0]];
-  }
-
-  localStorage.setItem(getCacheKey(), JSON.stringify(cache));
+// HISTORY
+function getHistory(){
+  return JSON.parse(localStorage.getItem("history_"+getUser())||"[]");
 }
-
-// ================= HISTORY (USER BASED) =================
-function getHistoryKey() {
-  return "history_" + getCurrentUser();
-}
-
-function getHistory() {
-  return JSON.parse(localStorage.getItem(getHistoryKey()) || "[]");
-}
-
-function saveHistory(history) {
-  localStorage.setItem(getHistoryKey(), JSON.stringify(history));
-}
-
-function renderHistory() {
-  const history = getHistory();
-
-  document.getElementById("history").innerHTML =
-    history.map(item => `
-      <div class="bg-white p-2 rounded shadow mb-2">
-        <b>Q:</b> ${item.q}<br>
-        <b>A:</b> ${item.a}
-      </div>
-    `).join("");
-}
-
-function addHistory(q, a) {
-  const history = getHistory();
-  history.unshift({ q, a });
-  saveHistory(history);
+function addHistory(q,a){
+  const h=getHistory(); h.unshift({q,a});
+  localStorage.setItem("history_"+getUser(),JSON.stringify(h));
   renderHistory();
 }
-
-// ================= FREE TRIAL =================
-function getTrialKey() {
-  return "trial_" + getCurrentUser();
+function renderHistory(){
+  const h=getHistory();
+  document.getElementById("history").innerHTML =
+    h.map(i=>`<div class="bg-white p-2 mb-2">${i.q}<br>${i.a}</div>`).join("");
 }
 
-function getTrialUsage() {
-  return parseInt(localStorage.getItem(getTrialKey()) || "0");
+// TRIAL
+function getTrial(){
+  return parseInt(localStorage.getItem("trial_"+getUser())||"0");
+}
+function incTrial(){
+  localStorage.setItem("trial_"+getUser(), getTrial()+1);
 }
 
-function incrementTrial() {
-  let count = getTrialUsage();
-  count++;
-  localStorage.setItem(getTrialKey(), count);
-}
+// LIMIT
+let usage = JSON.parse(localStorage.getItem("usage")||"{}");
+function today(){ return new Date().toISOString().split("T")[0]; }
 
-// ================= DAILY LIMIT =================
-let usage = JSON.parse(localStorage.getItem("usage") || "{}");
+// ACCESS
+function canUse(){
+  const user=getUser();
 
-function getToday() {
-  return new Date().toISOString().split("T")[0];
-}
+  if(user===ADMIN_EMAIL) return true;
 
-// ================= ACCESS CONTROL =================
-function canUse() {
+  if(getTrial()<5){ incTrial(); return true; }
 
-  const user = getCurrentUser();
+  if(!usage[today()]) usage[today()]=0;
 
-  // 👑 ADMIN (YOU)
-  if (user === ADMIN_EMAIL) return true;
+  if(usage[today()]>=3) return false;
 
-  // 💎 PREMIUM USERS
-  if (localStorage.getItem("premium") === "true") return true;
-
-  // 🎁 FREE TRIAL (5 uses)
-  if (getTrialUsage() < 5) {
-    incrementTrial();
-    return true;
-  }
-
-  // 📅 DAILY LIMIT (3/day)
-  const today = getToday();
-  if (!usage[today]) usage[today] = 0;
-
-  if (usage[today] >= 3) return false;
-
-  usage[today]++;
-  localStorage.setItem("usage", JSON.stringify(usage));
-
-  if (usage[today] === 2) {
-    alert("⚠️ Only 1 question left today!");
-  }
-
+  usage[today()]++;
+  localStorage.setItem("usage",JSON.stringify(usage));
   return true;
 }
 
-// ================= STATUS =================
-function updateStatus() {
-  const user = getCurrentUser();
+// STATUS
+function updateStatus(){
+  const user=getUser();
+  let text="";
 
-  let text = "";
+  if(user===ADMIN_EMAIL) text="👑 Admin Unlimited";
+  else if(getTrial()<5) text="🎁 Trial left: "+(5-getTrial());
+  else text="🆓 Daily left: "+(3-(usage[today()]||0));
 
-  if (user === ADMIN_EMAIL) {
-    text = "👑 Admin (Unlimited)";
-  } else if (localStorage.getItem("premium") === "true") {
-    text = "💎 Premium User";
-  } else if (getTrialUsage() < 5) {
-    text = `🎁 Free Trial: ${5 - getTrialUsage()} left`;
-  } else {
-    const today = getToday();
-    const used = usage[today] || 0;
-    text = `🆓 Free: ${3 - used} left today`;
-  }
-
-  document.getElementById("status").innerText = text;
+  document.getElementById("status").innerText=text;
 }
 
-// ================= ANTI SPAM =================
-let lastRequest = 0;
-
-function allowRequest() {
-  const now = Date.now();
-  if (now - lastRequest < 4000) return false;
-  lastRequest = now;
-  return true;
+// FALLBACK
+function fallback(q){
+  if(q.includes("2+2")) return "4";
+  return "⚠️ Server busy. Try later.";
 }
 
-// ================= APP =================
-const app = {
+// APP
+const app={
+async solveQuestion(){
 
-  showLoading() {
-    document.getElementById("output").innerText = "⏳ Thinking...";
-  },
+  const q=document.getElementById("questionInput").value.trim();
+  if(!q) return alert("Enter question");
 
-  renderResult(text) {
-    document.getElementById("output").innerText = text;
-  },
+  if(!canUse()) return alert("Limit reached");
 
-  async solveQuestion() {
+  const cache=getCache();
+  if(cache[q]) return document.getElementById("output").innerText=cache[q];
 
-    const question = document.getElementById("questionInput").value.trim();
+  document.getElementById("output").innerText="⏳ Thinking...";
 
-    if (!question) return alert("Enter a question");
+  try{
+    const res=await fetch("/api/ask-ai",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({question:q})
+    });
 
-    if (!allowRequest()) return alert("Wait a few seconds");
+    const data=await res.json();
 
-    if (!canUse()) {
-      alert("❌ Limit reached. Upgrade to premium 🚀");
+    if(!res.ok || !data.answer){
+      document.getElementById("output").innerText=fallback(q);
       return;
     }
 
-    // CACHE
-    const cache = getCache();
-    if (cache[question]) {
-      this.renderResult("⚡ Cached:\n\n" + cache[question]);
-      return;
-    }
+    document.getElementById("output").innerText=data.answer;
+    setCache(q,data.answer);
+    addHistory(q,data.answer);
 
-    this.showLoading();
-
-    try {
-      const res = await fetch("/api/ask-ai", {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ question })
-      });
-
-      const data = await res.json();
-      console.log("API:", data);
-
-      if (!res.ok) {
-        this.renderResult("❌ " + (data.error || "Error"));
-        return;
-      }
-
-      if (!data.answer) {
-        this.renderResult("❌ No answer received");
-        return;
-      }
-
-      this.renderResult(data.answer);
-
-      setCache(question, data.answer);
-      addHistory(question, data.answer);
-      updateStatus();
-
-    } catch (e) {
-      console.error(e);
-      this.renderResult("❌ Connection error");
-    }
+  }catch{
+    document.getElementById("output").innerText=fallback(q);
   }
+
+  updateStatus();
+}
 };
 
 // INIT

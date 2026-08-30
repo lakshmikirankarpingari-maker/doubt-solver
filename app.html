@@ -10,7 +10,7 @@
 <body class="bg-gray-100">
 
 <script>
-// 🔒 BLOCK DIRECT ACCESS
+// 🔒 AUTH CHECK
 if (localStorage.getItem("loggedIn") !== "true") {
   window.location.href = "index.html";
 }
@@ -52,7 +52,6 @@ function setCache(q, a) {
   const cache = getCache();
   cache[q] = a;
 
-  // limit cache size
   const keys = Object.keys(cache);
   if (keys.length > 50) delete cache[keys[0]];
 
@@ -74,6 +73,22 @@ function canUse() {
 
   usage[today]++;
   localStorage.setItem("usage", JSON.stringify(usage));
+
+  // ⚠️ warning
+  if (usage[today] === 2) {
+    alert("⚠️ Only 1 free question left today!");
+  }
+
+  return true;
+}
+
+// ================= ANTI SPAM =================
+let lastRequest = 0;
+
+function allowRequest() {
+  const now = Date.now();
+  if (now - lastRequest < 4000) return false;
+  lastRequest = now;
   return true;
 }
 
@@ -92,8 +107,15 @@ const app = {
 
     const question = document.getElementById("questionInput").value.trim();
 
-    if (!question) {
-      alert("Enter a question");
+    if (!question) return alert("Enter a question");
+
+    if (question.length > 200) {
+      alert("Keep question short");
+      return;
+    }
+
+    if (!allowRequest()) {
+      alert("Wait a few seconds...");
       return;
     }
 
@@ -102,7 +124,7 @@ const app = {
       return;
     }
 
-    // ✅ CACHE CHECK
+    // CACHE
     const cache = getCache();
     if (cache[question]) {
       this.renderResult("⚡ Cached:\n\n" + cache[question]);
@@ -119,28 +141,24 @@ const app = {
       });
 
       const data = await res.json();
+      console.log("API:", data);
 
-      console.log("API RESPONSE:", data); // 🔍 DEBUG
-
-      // ✅ HANDLE ERRORS PROPERLY
       if (!res.ok) {
-        this.renderResult("❌ " + (data.error || "Server error"));
+        this.renderResult("❌ " + (data.error || "Error"));
         return;
       }
 
       if (!data.answer) {
-        this.renderResult("❌ No answer received");
+        this.renderResult("❌ No answer");
         return;
       }
 
-      const answer = data.answer;
-
-      this.renderResult(answer);
-      setCache(question, answer);
+      this.renderResult(data.answer);
+      setCache(question, data.answer);
 
     } catch (e) {
       console.error(e);
-      this.renderResult("❌ Connection error");
+      this.renderResult("❌ Connection failed");
     }
   }
 };

@@ -20,6 +20,8 @@ if (localStorage.getItem("loggedIn") !== "true") {
 🤖 DoubtSolve AI
 </div>
 
+<div id="status" class="text-center text-sm text-gray-600 mt-2"></div>
+
 <div class="text-center mt-2">
 <button onclick="logout()" class="text-red-500">Logout</button>
 </div>
@@ -42,6 +44,9 @@ Solve
 </div>
 
 <script>
+
+// 👑 ADMIN EMAIL (YOUR EMAIL ADDED)
+const ADMIN_EMAIL = "lakshmikirankarpingari@gmail.com";
 
 // LOGOUT
 function logout() {
@@ -107,14 +112,46 @@ function addHistory(q, a) {
   renderHistory();
 }
 
-// ================= LIMIT =================
+// ================= FREE TRIAL =================
+function getTrialKey() {
+  return "trial_" + getCurrentUser();
+}
+
+function getTrialUsage() {
+  return parseInt(localStorage.getItem(getTrialKey()) || "0");
+}
+
+function incrementTrial() {
+  let count = getTrialUsage();
+  count++;
+  localStorage.setItem(getTrialKey(), count);
+}
+
+// ================= DAILY LIMIT =================
 let usage = JSON.parse(localStorage.getItem("usage") || "{}");
 
 function getToday() {
   return new Date().toISOString().split("T")[0];
 }
 
+// ================= ACCESS CONTROL =================
 function canUse() {
+
+  const user = getCurrentUser();
+
+  // 👑 ADMIN (YOU)
+  if (user === ADMIN_EMAIL) return true;
+
+  // 💎 PREMIUM USERS
+  if (localStorage.getItem("premium") === "true") return true;
+
+  // 🎁 FREE TRIAL (5 uses)
+  if (getTrialUsage() < 5) {
+    incrementTrial();
+    return true;
+  }
+
+  // 📅 DAILY LIMIT (3/day)
   const today = getToday();
   if (!usage[today]) usage[today] = 0;
 
@@ -128,6 +165,27 @@ function canUse() {
   }
 
   return true;
+}
+
+// ================= STATUS =================
+function updateStatus() {
+  const user = getCurrentUser();
+
+  let text = "";
+
+  if (user === ADMIN_EMAIL) {
+    text = "👑 Admin (Unlimited)";
+  } else if (localStorage.getItem("premium") === "true") {
+    text = "💎 Premium User";
+  } else if (getTrialUsage() < 5) {
+    text = `🎁 Free Trial: ${5 - getTrialUsage()} left`;
+  } else {
+    const today = getToday();
+    const used = usage[today] || 0;
+    text = `🆓 Free: ${3 - used} left today`;
+  }
+
+  document.getElementById("status").innerText = text;
 }
 
 // ================= ANTI SPAM =================
@@ -159,7 +217,10 @@ const app = {
 
     if (!allowRequest()) return alert("Wait a few seconds");
 
-    if (!canUse()) return alert("❌ Daily limit reached");
+    if (!canUse()) {
+      alert("❌ Limit reached. Upgrade to premium 🚀");
+      return;
+    }
 
     // CACHE
     const cache = getCache();
@@ -194,6 +255,7 @@ const app = {
 
       setCache(question, data.answer);
       addHistory(question, data.answer);
+      updateStatus();
 
     } catch (e) {
       console.error(e);
@@ -202,8 +264,9 @@ const app = {
   }
 };
 
-// LOAD HISTORY
+// INIT
 renderHistory();
+updateStatus();
 
 </script>
 

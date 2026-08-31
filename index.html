@@ -3,85 +3,239 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login</title>
+<title>DoubtSolve AI</title>
+
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+
 </head>
 
-<body class="bg-gray-100 flex items-center justify-center h-screen">
+<body class="bg-gradient-to-br from-blue-100 to-gray-100">
 
-<div class="bg-white p-6 rounded shadow w-80">
-<h2 class="text-xl font-bold text-center mb-4">Login</h2>
+<script>
+if (localStorage.getItem("loggedIn") !== "true") {
+  window.location.href = "index.html";
+}
+</script>
 
-<input id="email" placeholder="Email" class="border p-2 w-full mb-2"/>
-<input id="password" type="password" placeholder="Password" class="border p-2 w-full mb-2"/>
+<!-- HEADER -->
+<div class="bg-blue-600 text-white text-center p-4 text-2xl font-bold">
+🤖 DoubtSolve AI
+</div>
 
-<button onclick="signup()" class="bg-gray-500 text-white w-full py-2 mb-2">Sign Up</button>
-<button onclick="login()" class="bg-blue-600 text-white w-full py-2">Login</button>
+<div id="status" class="text-center text-sm mt-2"></div>
 
-<p id="msg" class="text-center text-sm mt-2 text-red-500"></p>
+<div class="text-center mt-2">
+<button onclick="logout()" class="text-red-500">Logout</button>
+</div>
+
+<!-- INPUT -->
+<div class="max-w-xl mx-auto mt-4 bg-white p-4 rounded shadow">
+<textarea id="questionInput" class="w-full p-3 border rounded h-28"></textarea>
+
+<button onclick="app.solveQuestion()"
+class="mt-3 w-full bg-blue-600 text-white py-2 rounded">
+Solve
+</button>
+</div>
+
+<!-- CAMERA -->
+<div class="max-w-xl mx-auto mt-4 bg-white p-4 rounded shadow">
+<h2 class="font-bold mb-2">📷 Camera Solver</h2>
+
+<video id="camera" class="w-full rounded" autoplay></video>
+
+<div class="flex gap-2 mt-2">
+<button onclick="startCamera()" class="bg-green-500 text-white px-3 py-1 rounded">Start</button>
+<button onclick="captureImage()" class="bg-blue-500 text-white px-3 py-1 rounded">Capture</button>
+</div>
+
+<canvas id="canvas" class="hidden"></canvas>
+<img id="preview" class="mt-3"/>
+
+<button onclick="solveImage()" class="mt-3 w-full bg-purple-600 text-white py-2 rounded">
+Solve from Image
+</button>
+</div>
+
+<!-- DEMO -->
+<div id="demoSection" class="max-w-xl mx-auto mt-4 hidden">
+<h2 class="font-bold mb-2">📘 Demo Questions</h2>
+<div id="demoList"></div>
+</div>
+
+<!-- OUTPUT -->
+<div id="output" class="max-w-xl mx-auto mt-4 bg-white p-4 rounded text-lg"></div>
+
+<!-- HISTORY -->
+<div class="max-w-xl mx-auto p-4">
+<h2 class="font-bold mb-2">History</h2>
+<div id="history"></div>
 </div>
 
 <script>
 
-// HASH FUNCTION
-async function hash(text){
-  const enc = new TextEncoder().encode(text);
-  const buffer = await crypto.subtle.digest("SHA-256", enc);
-  return Array.from(new Uint8Array(buffer))
-    .map(b => b.toString(16).padStart(2,"0"))
-    .join("");
+// 👑 ADMIN (PERMANENT FIX)
+const ADMIN_EMAIL = "lakshmikirankarpingari@gmail.com";
+
+// ALWAYS NORMALIZE USER
+function getUser(){
+  return (localStorage.getItem("currentUser") || ADMIN_EMAIL).toLowerCase();
 }
 
-// GET USERS
-function getUsers(){
-  return JSON.parse(localStorage.getItem("users") || "{}");
+// ADMIN CHECK
+function isAdmin(){
+  return getUser() === ADMIN_EMAIL.toLowerCase();
 }
 
-// SIGNUP
-async function signup(){
-  let email = document.getElementById("email").value.trim().toLowerCase();
-  let pass = document.getElementById("password").value.trim();
-
-  if(!email || !pass){
-    msg.innerText = "Enter email & password";
-    return;
-  }
-
-  let users = getUsers();
-
-  if(users[email]){
-    msg.innerText = "User already exists";
-    return;
-  }
-
-  const hashed = await hash(pass);
-
-  users[email] = { password: hashed };
-  localStorage.setItem("users", JSON.stringify(users));
-
-  msg.style.color = "green";
-  msg.innerText = "Signup successful ✅";
+// LOGOUT
+function logout(){
+  localStorage.clear();
+  window.location.href="index.html";
 }
 
-// LOGIN
-async function login(){
-  let email = document.getElementById("email").value.trim().toLowerCase();
-  let pass = document.getElementById("password").value.trim();
+// ================= DEMO =================
+const EXAMPLES = [
+{q:"What is 2 + 2?",a:"4"},
+{q:"5 × 6?",a:"30"},
+{q:"Square of 8?",a:"64"},
+{q:"√81?",a:"9"},
+{q:"10 - 3?",a:"7"},
+{q:"Force formula?",a:"F = ma"},
+{q:"Water formula?",a:"H2O"},
+{q:"DNA?",a:"Genetic material"},
+{q:"AI?",a:"Artificial Intelligence"},
+{q:"Capital of India?",a:"New Delhi"}
+];
 
-  let users = getUsers();
+// DEMO UI
+function renderDemo(){
+  demoList.innerHTML = EXAMPLES.map((e,i)=>`
+    <div onclick="loadExample(${i})"
+    class="bg-white p-2 mb-2 rounded shadow cursor-pointer">
+      ${e.q}
+    </div>
+  `).join("");
+}
 
-  const hashed = await hash(pass);
+function loadExample(i){
+  questionInput.value = EXAMPLES[i].q;
+  output.innerText = "📘 " + EXAMPLES[i].a;
+}
 
-  if(users[email] && users[email].password === hashed){
-    localStorage.setItem("loggedIn", "true");
-    localStorage.setItem("currentUser", email);
-
-    window.location.href = "app.html";
+// SHOW ONLY ADMIN
+function controlDemo(){
+  if(isAdmin()){
+    demoSection.classList.remove("hidden");
+    status.innerText = "👑 Admin Unlimited";
   } else {
-    msg.style.color = "red";
-    msg.innerText = "❌ Invalid email or password";
+    status.innerText = "🆓 Free User";
   }
 }
+
+// ================= CACHE =================
+function getCache(){
+  return JSON.parse(localStorage.getItem("cache_"+getUser())||"{}");
+}
+function setCache(q,a){
+  let c=getCache(); c[q]=a;
+  localStorage.setItem("cache_"+getUser(),JSON.stringify(c));
+}
+
+// ================= HISTORY =================
+function getHistory(){
+  return JSON.parse(localStorage.getItem("history_"+getUser())||"[]");
+}
+function addHistory(q,a){
+  let h=getHistory(); h.unshift({q,a});
+  localStorage.setItem("history_"+getUser(),JSON.stringify(h));
+  renderHistory();
+}
+function renderHistory(){
+  history.innerHTML = getHistory().map(i=>`
+    <div class="bg-white p-2 mb-2">${i.q}<br>${i.a}</div>
+  `).join("");
+}
+
+// ================= CAMERA =================
+function startCamera(){
+  navigator.mediaDevices.getUserMedia({video:true})
+  .then(stream=>camera.srcObject=stream)
+  .catch(()=>alert("Camera not allowed"));
+}
+
+function captureImage(){
+  const ctx=canvas.getContext("2d");
+  canvas.width=camera.videoWidth;
+  canvas.height=camera.videoHeight;
+  ctx.drawImage(camera,0,0);
+  preview.src=canvas.toDataURL();
+}
+
+async function solveImage(){
+  if(!preview.src) return alert("Capture image first");
+
+  output.innerText="🔍 Reading image...";
+
+  const result = await Tesseract.recognize(preview.src,"eng");
+  const text = result.data.text.trim();
+
+  if(!text){
+    output.innerText="❌ No text found";
+    return;
+  }
+
+  questionInput.value=text;
+  app.solveQuestion();
+}
+
+// ================= APP =================
+const app={
+async solveQuestion(){
+
+  const q=questionInput.value.trim();
+  if(!q) return alert("Enter question");
+
+  // DEMO FOR ALL USERS
+  const demo = EXAMPLES.find(e=>e.q.toLowerCase()===q.toLowerCase());
+  if(demo){
+    output.innerText="📘 "+demo.a;
+    return;
+  }
+
+  const cache=getCache();
+  if(cache[q]) return output.innerText=cache[q];
+
+  output.innerText="⏳ Thinking...";
+
+  try{
+    const res=await fetch("/api/ask-ai",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({question:q})
+    });
+
+    const data=await res.json();
+
+    if(!data.answer){
+      output.innerText="⚠️ AI unavailable";
+      return;
+    }
+
+    output.innerText=data.answer;
+    setCache(q,data.answer);
+    addHistory(q,data.answer);
+
+  }catch{
+    output.innerText="⚠️ Server error";
+  }
+}
+};
+
+// INIT
+renderDemo();
+renderHistory();
+controlDemo();
 
 </script>
 

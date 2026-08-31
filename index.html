@@ -18,9 +18,19 @@
 <button onclick="signup()" class="bg-gray-500 text-white w-full py-2 mb-2">Sign Up</button>
 <button onclick="login()" class="bg-blue-600 text-white w-full py-2">Login</button>
 
+<p id="msg" class="text-center text-sm mt-2 text-red-500"></p>
 </div>
 
 <script>
+
+// HASH FUNCTION
+async function hash(text){
+  const enc = new TextEncoder().encode(text);
+  const buffer = await crypto.subtle.digest("SHA-256", enc);
+  return Array.from(new Uint8Array(buffer))
+    .map(b => b.toString(16).padStart(2,"0"))
+    .join("");
+}
 
 // GET USERS
 function getUsers(){
@@ -28,45 +38,48 @@ function getUsers(){
 }
 
 // SIGNUP
-function signup(){
+async function signup(){
   let email = document.getElementById("email").value.trim().toLowerCase();
   let pass = document.getElementById("password").value.trim();
 
   if(!email || !pass){
-    alert("Enter email & password");
+    msg.innerText = "Enter email & password";
     return;
   }
 
   let users = getUsers();
 
   if(users[email]){
-    alert("User already exists");
+    msg.innerText = "User already exists";
     return;
   }
 
-  users[email] = { password: pass };
+  const hashed = await hash(pass);
+
+  users[email] = { password: hashed };
   localStorage.setItem("users", JSON.stringify(users));
 
-  alert("Signup successful ✅");
+  msg.style.color = "green";
+  msg.innerText = "Signup successful ✅";
 }
 
 // LOGIN
-function login(){
+async function login(){
   let email = document.getElementById("email").value.trim().toLowerCase();
   let pass = document.getElementById("password").value.trim();
 
   let users = getUsers();
 
-  // DEBUG (optional)
-  console.log("Stored users:", users);
+  const hashed = await hash(pass);
 
-  if(users[email] && users[email].password === pass){
+  if(users[email] && users[email].password === hashed){
     localStorage.setItem("loggedIn", "true");
     localStorage.setItem("currentUser", email);
 
     window.location.href = "app.html";
   } else {
-    alert("❌ Invalid email or password");
+    msg.style.color = "red";
+    msg.innerText = "❌ Invalid email or password";
   }
 }
 

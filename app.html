@@ -6,208 +6,121 @@
 <title>DoubtSolve AI</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
-
-<!-- OCR -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 
 </head>
 
-<body class="bg-gradient-to-br from-blue-100 to-gray-100">
+<body class="bg-gray-100">
 
 <script>
-if (localStorage.getItem("loggedIn") !== "true") {
-  window.location.href = "index.html";
+// SAFE LOGIN CHECK
+const isLogged = localStorage.getItem("loggedIn");
+if (!isLogged || isLogged !== "true") {
+  window.location.replace("index.html");
 }
+
+// ERROR DEBUG
+window.onerror = function(msg, url, line){
+  alert("Error: " + msg + " at line " + line);
+};
 </script>
 
-<!-- HEADER -->
-<div class="bg-blue-600 text-white text-center p-4 text-2xl font-bold shadow">
+<div class="bg-blue-600 text-white text-center p-4 text-xl font-bold">
 🤖 DoubtSolve AI
 </div>
 
-<!-- STATUS -->
-<div id="status" class="text-center text-sm mt-2 text-gray-600"></div>
+<div id="status" class="text-center text-sm mt-2"></div>
 
-<!-- LOGOUT -->
 <div class="text-center mt-2">
 <button onclick="logout()" class="text-red-500">Logout</button>
 </div>
 
 <!-- INPUT -->
-<div class="max-w-xl mx-auto mt-4 bg-white p-4 rounded-xl shadow">
-<textarea id="questionInput" class="w-full p-3 border rounded h-28"
-placeholder="Ask your question..."></textarea>
-
-<button onclick="app.solveQuestion()"
-class="mt-3 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
-Solve
-</button>
+<div class="p-4 max-w-xl mx-auto bg-white rounded shadow">
+<textarea id="questionInput" class="w-full p-3 border rounded h-28"></textarea>
+<button onclick="app.solve()" class="mt-3 w-full bg-blue-600 text-white py-2 rounded">Solve</button>
 </div>
 
 <!-- CAMERA -->
-<div class="max-w-xl mx-auto mt-4 bg-white p-4 rounded-xl shadow">
-<h2 class="font-bold mb-2">📷 Camera Solver</h2>
-
-<video id="camera" class="w-full rounded" autoplay></video>
+<div class="p-4 max-w-xl mx-auto bg-white mt-4 rounded shadow">
+<h2 class="font-bold">📷 Camera</h2>
+<video id="camera" class="w-full" autoplay></video>
 
 <div class="flex gap-2 mt-2">
 <button onclick="startCamera()" class="bg-green-500 text-white px-3 py-1 rounded">Start</button>
-<button onclick="captureImage()" class="bg-blue-500 text-white px-3 py-1 rounded">Capture</button>
+<button onclick="capture()" class="bg-blue-500 text-white px-3 py-1 rounded">Capture</button>
 </div>
 
 <canvas id="canvas" class="hidden"></canvas>
-<img id="preview" class="mt-3 rounded"/>
+<img id="preview" class="mt-2"/>
 
-<button onclick="solveImage()" class="mt-3 w-full bg-purple-600 text-white py-2 rounded">
-Solve from Image
+<button onclick="solveImage()" class="mt-2 w-full bg-purple-600 text-white py-2 rounded">
+Solve Image
 </button>
 </div>
 
-<!-- ADMIN DEMO -->
-<div id="demoSection" class="max-w-xl mx-auto mt-4 hidden">
-<h2 class="font-bold mb-2">📘 Demo Questions (Admin Only)</h2>
-<div id="demoList"></div>
-</div>
-
 <!-- OUTPUT -->
-<div id="output" class="max-w-xl mx-auto mt-4 bg-white p-4 rounded-xl shadow text-lg"></div>
+<div id="output" class="p-4 max-w-xl mx-auto bg-white mt-4 rounded"></div>
 
 <!-- HISTORY -->
-<div class="max-w-xl mx-auto p-4">
-<h2 class="font-bold mb-2">History</h2>
+<div class="p-4 max-w-xl mx-auto">
+<h2 class="font-bold">History</h2>
 <div id="history"></div>
 </div>
 
-<style>
-.card{
-  background:white;
-  padding:10px;
-  border-radius:10px;
-  box-shadow:0 2px 6px rgba(0,0,0,0.1);
-  cursor:pointer;
-  margin-bottom:8px;
-}
-.card:hover{
-  background:#e0f2fe;
-}
-</style>
-
 <script>
 
-// 👑 ADMIN
-const ADMIN_EMAIL = "lakshmikirankarpingari@gmail.com";
+// ADMIN
+const ADMIN = "lakshmikirankarpingari@gmail.com";
 
-// ================= DEMO DATA (50+) =================
-const EXAMPLES = [
-{q:"What is 2 + 2?",a:"4"},
-{q:"5 × 6?",a:"30"},
-{q:"Square of 8?",a:"64"},
-{q:"√81?",a:"9"},
-{q:"10 - 3?",a:"7"},
-{q:"12 ÷ 4?",a:"3"},
-{q:"Area of square?",a:"side × side"},
-{q:"Perimeter?",a:"4 × side"},
-{q:"Pi value?",a:"3.14"},
-{q:"3²?",a:"9"},
-
-{q:"Force formula?",a:"F = ma"},
-{q:"Unit of force?",a:"Newton"},
-{q:"Speed formula?",a:"Distance / Time"},
-{q:"Power unit?",a:"Watt"},
-{q:"Gravity?",a:"9.8 m/s²"},
-{q:"Energy unit?",a:"Joule"},
-{q:"Work formula?",a:"Force × Distance"},
-
-{q:"Water formula?",a:"H2O"},
-{q:"CO2?",a:"Carbon dioxide"},
-{q:"Oxygen symbol?",a:"O"},
-{q:"Acid releases?",a:"H+"},
-{q:"Base releases?",a:"OH-"},
-{q:"pH water?",a:"7"},
-
-{q:"Cell?",a:"Basic unit of life"},
-{q:"DNA?",a:"Genetic material"},
-{q:"Photosynthesis?",a:"Food making process"},
-{q:"Heart?",a:"Pumps blood"},
-
-{q:"AI?",a:"Artificial Intelligence"},
-{q:"Algorithm?",a:"Step-by-step process"},
-{q:"CPU?",a:"Brain of computer"},
-{q:"RAM?",a:"Temporary memory"},
-
-{q:"Capital of India?",a:"New Delhi"},
-{q:"Largest planet?",a:"Jupiter"},
-{q:"Smallest prime?",a:"2"},
-{q:"Even number?",a:"Divisible by 2"},
-{q:"Odd number?",a:"Not divisible by 2"},
-{q:"Sun?",a:"Star"},
-{q:"Moon?",a:"Satellite"},
-{q:"Earth shape?",a:"Geoid"},
-{q:"Boiling point?",a:"100°C"},
-{q:"Melting point ice?",a:"0°C"}
-];
-
-// DEMO UI
-function renderDemo(){
-  demoList.innerHTML = EXAMPLES.map((e,i)=>`
-    <div onclick="loadExample(${i})" class="card">${e.q}</div>
-  `).join("");
-}
-
-function loadExample(i){
-  questionInput.value = EXAMPLES[i].q;
-  output.innerText = "📘 " + EXAMPLES[i].a;
-}
-
-// SHOW ONLY ADMIN
-function controlDemo(){
-  if(getUser() === ADMIN_EMAIL){
-    demoSection.classList.remove("hidden");
-  }
-}
-
-// ================= CORE =================
+// USER
 function getUser(){
-  return localStorage.getItem("currentUser");
+  return (localStorage.getItem("currentUser") || ADMIN).toLowerCase();
 }
 
+// LOGOUT
 function logout(){
   localStorage.clear();
-  window.location.href="index.html";
-}
-
-// CACHE
-function getCache(){
-  return JSON.parse(localStorage.getItem("cache_"+getUser())||"{}");
-}
-function setCache(q,a){
-  let c=getCache(); c[q]=a;
-  localStorage.setItem("cache_"+getUser(),JSON.stringify(c));
+  location.href="index.html";
 }
 
 // HISTORY
 function getHistory(){
-  return JSON.parse(localStorage.getItem("history_"+getUser())||"[]");
+  return JSON.parse(localStorage.getItem("h_"+getUser())||"[]");
 }
 function addHistory(q,a){
-  let h=getHistory(); h.unshift({q,a});
-  localStorage.setItem("history_"+getUser(),JSON.stringify(h));
+  let h=getHistory();
+  h.unshift({q,a});
+  localStorage.setItem("h_"+getUser(),JSON.stringify(h));
   renderHistory();
 }
 function renderHistory(){
-  history.innerHTML = getHistory().map(i=>`
-    <div class="card"><b>${i.q}</b><br>${i.a}</div>
+  history.innerHTML=getHistory().map(i=>`
+    <div class="bg-white p-2 mb-2">${i.q}<br>${i.a}</div>
   `).join("");
 }
 
-// ================= CAMERA =================
+// DEMO (WORKS FOR ALL)
+const DEMO = {
+"2+2":"4",
+"force formula":"F = ma",
+"water formula":"H2O",
+"ai":"Artificial Intelligence"
+};
+
+// CAMERA SAFE
 function startCamera(){
+  if(!navigator.mediaDevices){
+    alert("Camera not supported");
+    return;
+  }
+
   navigator.mediaDevices.getUserMedia({video:true})
-  .then(stream=>camera.srcObject=stream)
-  .catch(()=>alert("Camera not allowed"));
+  .then(s=>camera.srcObject=s)
+  .catch(()=>alert("Camera blocked"));
 }
 
-function captureImage(){
+function capture(){
   const ctx=canvas.getContext("2d");
   canvas.width=camera.videoWidth;
   canvas.height=camera.videoHeight;
@@ -216,38 +129,26 @@ function captureImage(){
 }
 
 async function solveImage(){
-  if(!preview.src) return alert("Capture image first");
+  if(!preview.src) return alert("Capture first");
 
-  output.innerText="🔍 Reading image...";
-
-  const result = await Tesseract.recognize(preview.src,"eng");
-  const text = result.data.text.trim();
-
-  if(!text){
-    output.innerText="❌ No text found";
-    return;
-  }
-
-  questionInput.value=text;
-  app.solveQuestion();
+  output.innerText="Reading...";
+  const r=await Tesseract.recognize(preview.src,"eng");
+  questionInput.value=r.data.text.trim();
+  app.solve();
 }
 
-// ================= APP =================
+// APP
 const app={
-async solveQuestion(){
+async solve(){
 
-  const q=questionInput.value.trim();
+  let q=questionInput.value.trim().toLowerCase();
   if(!q) return alert("Enter question");
 
-  // DEMO FOR ALL
-  const demo = EXAMPLES.find(e=>e.q.toLowerCase()===q.toLowerCase());
-  if(demo){
-    output.innerText="📘 "+demo.a;
+  // DEMO FIRST
+  if(DEMO[q]){
+    output.innerText="📘 "+DEMO[q];
     return;
   }
-
-  const cache=getCache();
-  if(cache[q]) return output.innerText=cache[q];
 
   output.innerText="⏳ Thinking...";
 
@@ -261,24 +162,21 @@ async solveQuestion(){
     const data=await res.json();
 
     if(!data.answer){
-      output.innerText="⚠️ AI unavailable";
+      output.innerText="AI unavailable";
       return;
     }
 
     output.innerText=data.answer;
-    setCache(q,data.answer);
     addHistory(q,data.answer);
 
   }catch{
-    output.innerText="⚠️ Server error";
+    output.innerText="Server error";
   }
 }
 };
 
 // INIT
-renderDemo();
 renderHistory();
-controlDemo();
 
 </script>
 
